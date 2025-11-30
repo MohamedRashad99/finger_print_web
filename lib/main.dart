@@ -8,15 +8,12 @@ import 'package:http/http.dart' as http;
 void main() {
   runApp(MyApp());
 
-// dvdsdvdsdsjkkdcjkdjkwdcjkdwcdcdcdcdcdcjkdnkcds
-//cdbcduycbducbuidcdcdcdcdc
+
 }
 
 class MyApp extends StatelessWidget {
-  // Toggle this to false to call a real server instead of local simulation.
   static const bool simulateServer = true;
 
-  // If not simulating, set your API base here:
   static const String apiBase = 'https://your-server.com';
 
   @override
@@ -45,7 +42,7 @@ class AuthDemoPage extends StatefulWidget {
 
 class _AuthDemoPageState extends State<AuthDemoPage> {
   String _log = '';
-  final _usernameController = TextEditingController(text: 'mohamed');
+  final _usernameController = TextEditingController(text: 'mohamedRashad');
 
   void _appendLog(String s) {
     setState(() {
