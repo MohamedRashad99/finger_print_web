@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="fingerprint">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>fingerprint</title>
+  <link rel="manifest" href="manifest.json">
+
+  <script>
+    // The value below is injected by flutter build, do not touch.
+    const serviceWorkerVersion = null;
+  </script>
+  <!-- This script adds the flutter initialization JS code -->
+  <script src="flutter.js" defer></script>
+</head>
+<body>
+
+
+
+  <script>
+    window.addEventListener('load', function(ev) {
+      // Download main.dart.js
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function(engineInitializer) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
+            appRunner.runApp();
+          });
+        }
+      });
+    });
+
+     // ===== base64url helpers =====
+  function arrayBufferToBase64Url(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function base64UrlToArrayBuffer(base64url) {
+    base64url = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64url.length % 4) base64url += '=';
+    const binary = atob(base64url);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  // ===== create (registration) =====
+  async function webauthnCreate(optionsFromServer) {
+    // convert fields from base64url -> ArrayBuffer
+    optionsFromServer.challenge = base64UrlToArrayBuffer(optionsFromServer.challenge);
+    if (optionsFromServer.user && optionsFromServer.user.id) {
+      optionsFromServer.user.id = base64UrlToArrayBuffer(optionsFromServer.user.id);
+    }
+    if (optionsFromServer.excludeCredentials) {
+      optionsFromServer.excludeCredentials = optionsFromServer.excludeCredentials.map(c => ({
+        type: c.type,
+        id: base64UrlToArrayBuffer(c.id)
+      }));
+    }
+
+    // force platform authenticator + require user verification (biometric)
+    optionsFromServer.authenticatorSelection = optionsFromServer.authenticatorSelection || {};
+    optionsFromServer.authenticatorSelection.authenticatorAttachment = "platform";
+    optionsFromServer.authenticatorSelection.userVerification = "required";
+
+    const cred = await navigator.credentials.create({ publicKey: optionsFromServer });
+    return {
+      id: cred.id,
+      rawId: arrayBufferToBase64Url(cred.rawId),
+      type: cred.type,
+      attestationObject: arrayBufferToBase64Url(cred.response.attestationObject),
+      clientDataJSON: arrayBufferToBase64Url(cred.response.clientDataJSON)
+    };
+  }
+
+  // ===== get (authentication) =====
+  async function webauthnGet(optionsFromServer) {
+    optionsFromServer.challenge = base64UrlToArrayBuffer(optionsFromServer.challenge);
+    if (optionsFromServer.allowCredentials) {
+      optionsFromServer.allowCredentials = optionsFromServer.allowCredentials.map(c => ({
+        type: c.type,
+        id: base64UrlToArrayBuffer(c.id)
+      }));
+    }
+    optionsFromServer.userVerification = optionsFromServer.userVerification || "required";
+
+    const assertion = await navigator.credentials.get({ publicKey: optionsFromServer });
+    return {
+      id: assertion.id,
+      rawId: arrayBufferToBase64Url(assertion.rawId),
+      type: assertion.type,
+      authenticatorData: arrayBufferToBase64Url(assertion.response.authenticatorData),
+      clientDataJSON: arrayBufferToBase64Url(assertion.response.clientDataJSON),
+      signature: arrayBufferToBase64Url(assertion.response.signature),
+      userHandle: assertion.response.userHandle ? arrayBufferToBase64Url(assertion.response.userHandle) : null
+    };
+  }
+
+  // expose to window
+  window.webauthnCreate = webauthnCreate;
+  window.webauthnGet = webauthnGet;
+  </script>
+</body>
+</html>
